@@ -1,7 +1,7 @@
 import express from 'express';
 import { registerUser, loginUser } from '../controllers/controllers.js';
 import authenticateToken from '../middleware/auth.js';
-import { getBooks, addBook, deleteBook, toggleFavorite } from '../controllers/bookController.js';
+import { getBooks, addBook, deleteBook, toggleFavorite, incrementDownloadCount } from '../controllers/bookController.js';
 
 const router = express.Router();
 
@@ -17,6 +17,7 @@ router.get('/books', authenticateToken, getBooks);
 router.post('/books', authenticateToken, addBook);
 router.delete('/books/delete', authenticateToken, deleteBook);
 router.post('/books/favorite', authenticateToken, toggleFavorite);
+router.post('/books/download', authenticateToken, incrementDownloadCount);
 
 // Ruta de perfil
 router.get('/profile', authenticateToken, (req, res) => {

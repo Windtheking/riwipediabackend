@@ -21,7 +21,7 @@ const getBooks = async (req, res) => {
             INNER JOIN categories c ON b.id_category = c.id
             ORDER BY b.created_at DESC
         `;
-        
+
         const [books] = await promisePool.execute(query);
         res.json({ success: true, books });
     } catch (error) {
@@ -36,22 +36,22 @@ const addBook = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Solo administradores pueden agregar libros' });
         }
 
-        const { title, author_name, category_name, description, portrait_url, book_url, book_language } = req.body;
-        
+        const { title, author_name, category_name, portrait_url, book_url, book_language } = req.body;
+
         // Validar campos obligatorios
         if (!title || !author_name || !category_name || !book_url) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Título, autor, categoría y URL del libro son campos obligatorios' 
+            return res.status(400).json({
+                success: false,
+                message: 'Título, autor, categoría y URL del libro son campos obligatorios'
             });
         }
-        
+
         // 1. Verificar o crear autor
         let [authorResult] = await promisePool.execute(
             'SELECT id FROM authors WHERE author_name = ?',
             [author_name]
         );
-        
+
         let authorId;
         if (authorResult.length === 0) {
             [authorResult] = await promisePool.execute(
@@ -68,7 +68,7 @@ const addBook = async (req, res) => {
             'SELECT id FROM categories WHERE category_name = ?',
             [category_name]
         );
-        
+
         let categoryId;
         if (categoryResult.length === 0) {
             [categoryResult] = await promisePool.execute(
@@ -88,45 +88,46 @@ const addBook = async (req, res) => {
             [title, 0, portrait_url || null, book_url, book_language || 'ENG', authorId, categoryId]
         );
 
-        res.json({ 
-            success: true, 
-            message: 'Libro agregado exitosamente', 
-            bookId: bookResult.insertId 
+        res.json({
+            success: true,
+            message: 'Libro agregado exitosamente',
+            bookId: bookResult.insertId
         });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error al agregar libro' });
     }
 };
 
-// Eliminar libro (solo admin)
-const deleteBook = async (req, res) => {
+async function deleteBook(bookId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este libro?')) return;
     try {
-        if (req.user.rol !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Solo administradores pueden eliminar libros' });
-        }
+        const response = await authPost('/books/delete', { bookId });
 
-        const { bookId } = req.body;
-        
-        await promisePool.execute('DELETE FROM books WHERE id = ?', [bookId]);
-        
-        res.json({ success: true, message: 'Libro eliminado exitosamente' });
+        const data = await response.json();
+
+        if (data.success) {
+            showModal('Éxito', 'Libro eliminado correctamente');
+            await loadBooks();
+        } else {
+            showModal('Error', data.message || 'Error al eliminar el libro');
+        }
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Error al eliminar libro' });
+        showModal('Error', 'Error al eliminar el libro');
     }
-};
+}
 
 // Marcar/desmarcar como favorito
 const toggleFavorite = async (req, res) => {
     try {
         const { bookId } = req.body;
         const userId = req.user.id;
-        
+
         // Verificar si ya es favorito
         const [existing] = await promisePool.execute(
             'SELECT * FROM user_favorites WHERE user_id = ? AND book_id = ?',
             [userId, bookId]
         );
-        
+
         if (existing.length > 0) {
             // Quitar de favoritos
             await promisePool.execute(
@@ -155,4 +156,20 @@ const toggleFavorite = async (req, res) => {
     }
 };
 
-export { getBooks, addBook, deleteBook, toggleFavorite };
+// Incrementar contador de descargas
+const incrementDownloadCount = async (req, res) => {
+    try {
+        const { bookId } = req.body;
+
+        await promisePool.execute(
+            'UPDATE books SET download_count = download_count + 1 WHERE id = ?',
+            [bookId]
+        );
+
+        res.json({ success: true, message: 'Contador de descargas actualizado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error al actualizar descargas' });
+    }
+};
+
+export { getBooks, addBook, deleteBook, toggleFavorite, incrementDownloadCount };
