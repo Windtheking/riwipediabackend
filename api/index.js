@@ -7,7 +7,7 @@ dotenv.config();
 
 const app = express();
 app.use(cors({
-    origin: ['https://tu-frontend.vercel.app'], // Cambia por tu dominio real
+    origin: ['https://riwiwpedia-frontend.vercel.app/'],
     credentials: true
 }));
 app.use(express.json());
