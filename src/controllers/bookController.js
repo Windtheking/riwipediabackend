@@ -98,23 +98,72 @@ const addBook = async (req, res) => {
     }
 };
 
-async function deleteBook(bookId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar este libro?')) return;
+const deleteBook = async (req, res) => {
     try {
-        const response = await authPost('/books/delete', { bookId });
+        console.log('Solicitud de eliminar libro recibida');
+        console.log('Usuario:', req.user);
+        console.log('Body recibido:', req.body);
 
-        const data = await response.json();
-
-        if (data.success) {
-            showModal('Éxito', 'Libro eliminado correctamente');
-            await loadBooks();
-        } else {
-            showModal('Error', data.message || 'Error al eliminar el libro');
+        if (req.user.rol !== 'admin') {
+            console.log('❌ Usuario no es admin');
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Solo administradores pueden eliminar libros' 
+            });
         }
+
+        const { bookId } = req.body;
+        
+        if (!bookId) {
+            console.log('❌ bookId no proporcionado');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ID de libro requerido' 
+            });
+        }
+
+        console.log('Eliminando libro ID:', bookId);
+        
+        // Primero eliminar de favoritos (si existe la tabla)
+        try {
+            await promisePool.execute(
+                'DELETE FROM user_favorites WHERE book_id = ?',
+                [bookId]
+            );
+            console.log('✅ Eliminado de favoritos');
+        } catch (error) {
+            console.log('⚠️ No se pudo eliminar de favoritos (tal vez la tabla no existe):', error.message);
+        }
+
+        // Luego eliminar el libro
+        const [result] = await promisePool.execute(
+            'DELETE FROM books WHERE id = ?',
+            [bookId]
+        );
+
+        console.log('Resultado de eliminación:', result);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Libro no encontrado' 
+            });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Libro eliminado exitosamente',
+            affectedRows: result.affectedRows
+        });
     } catch (error) {
-        showModal('Error', 'Error al eliminar el libro');
+        console.error('❌ Error al eliminar libro:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error al eliminar libro',
+            error: error.message 
+        });
     }
-}
+};
 
 // Marcar/desmarcar como favorito
 const toggleFavorite = async (req, res) => {
