@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import endpoints from './routes/endpoints.js';
+import endpoints from './src/routes/endpoints.js';
 
 dotenv.config();
 
@@ -10,7 +10,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000', // Desarrollo local
+    'https://riwiwpedia-frontend.vercel.app/', // URL de tu frontend en Vercel
+    process.env.FRONTEND_URL // Variable de entorno
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // 3. Conectar rutas
