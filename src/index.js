@@ -6,7 +6,6 @@ import endpoints from './routes/endpoints.js';
 
 dotenv.config();
 
-
 // 2. Configurar servidor
 const app = express();
 const PORT = process.env.PORT || 3000;
